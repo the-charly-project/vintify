@@ -140,7 +140,7 @@
       <div><b>≈10 s</b> per foto</div>
       <div><b>1600×1600</b> px in uscita</div>
       <div>Sfondo <b>bianco</b> o <b>originale</b></div>
-      <div><b>0</b> foto inviate in rete</div>
+      <div><b>0 upload</b> in modalità classica</div>
     </div>
   </section>
 
@@ -186,6 +186,37 @@
           <button data-v="1200">Veloce (1200 px)</button>
           <button data-v="1600" class="on">Alta (1600 px)</button>
           <button data-v="2000">Massima (2000 px)</button>
+        </div>
+      </div>
+      <div class="card ctl" style="grid-column:1/-1">
+        <h4>Motore di elaborazione</h4>
+        <p class="hint"><b>Classico</b>: istantaneo, offline, nessun upload — sistema luce, colore e pieghe.
+          <b>Rifinitura AI</b>: l'intelligenza artificiale <b>ridisegna il prodotto</b> togliendo pieghe e imperfezioni,
+          poi lo ricompongo su sfondo studio. Solo il prodotto ritagliato viene inviato alla rete volontaria
+          Stable Horde (gratuita, senza account). Attesa tipica 1–6 minuti.</p>
+        <div class="seg" id="segEngine">
+          <button data-v="classic" class="on">⚡ Classico — istantaneo</button>
+          <button data-v="ai">✨ Rifinitura AI — generativa</button>
+        </div>
+        <div id="aiBox" style="display:none;margin-top:14px">
+          <input id="desc" type="text" placeholder="Descrivi il prodotto per l'AI (es. camicia di jeans azzurra) — facoltativo ma migliora molto"
+                 style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:14px;font-family:inherit">
+          <div class="rowlabel" style="margin-top:14px"><span>Che risultato vuoi</span><span id="aiModeVal">Catalogo</span></div>
+          <div class="seg" id="segAiMode" style="margin-top:6px">
+            <button data-v="fedele">🛡️ Fedele — stesse dettagli</button>
+            <button data-v="catalogo" class="on">✨ Catalogo — più bello</button>
+          </div>
+          <div class="rowlabel" style="margin-top:14px"><span>Fedeltà</span><span id="aiStrengthVal">Naturale</span><span>Reinterpreta di più</span></div>
+          <div class="seg" id="segAiStrength" style="margin-top:6px">
+            <button data-v="0.30">Fedele</button>
+            <button data-v="0.42" class="on">Naturale</button>
+            <button data-v="0.55">Reinterpreta</button>
+          </div>
+          <p class="hint" style="margin-top:12px;background:#fff8e6;border:1px solid #f2e3b3;border-radius:10px;padding:10px 12px">
+            ⚠️ La rifinitura AI <b>ridisegna</b> il capo: perfetta come foto di copertina, ma può cambiare piccoli
+            dettagli (etichette, bottoni). Prima di pubblicare <b>controlla che il capo corrisponda</b>.
+            Per fedeltà assoluta usa il motore <b>Classico</b>.
+          </p>
         </div>
       </div>
     </div>
@@ -260,7 +291,8 @@ const status = $('status'), statusText = $('statusText');
 const results = $('results'), resgrid = $('resgrid'), stepsBox = $('steps');
 
 let currentFile = null, worker = null;
-const opts = { product: 'clothing', mode: 'full', folds: 0.65, canvas: 1600 };
+const opts = { product: 'clothing', mode: 'full', folds: 0.65, canvas: 1600,
+               engine: 'classic', aiStrength: 0.42, aiMode: 'catalogo', description: '' };
 
 function showErr(m) { err.textContent = m; err.classList.add('show'); }
 function hideErr() { err.classList.remove('show'); }
@@ -277,8 +309,23 @@ document.querySelectorAll('.seg button').forEach((b) => {
     if (seg.id === 'segProduct') opts.product = v;
     if (seg.id === 'segMode') opts.mode = v;
     if (seg.id === 'segSize') opts.canvas = parseInt(v, 10);
+    if (seg.id === 'segEngine') {
+      opts.engine = v;
+      document.getElementById('aiBox').style.display = v === 'ai' ? 'block' : 'none';
+    }
+    if (seg.id === 'segAiStrength') {
+      opts.aiStrength = parseFloat(v);
+      document.getElementById('aiStrengthVal').textContent =
+        v === '0.30' ? 'Fedele' : v === '0.42' ? 'Naturale' : 'Reinterpreta';
+    }
+    if (seg.id === 'segAiMode') {
+      opts.aiMode = v;
+      document.getElementById('aiModeVal').textContent = v === 'fedele' ? 'Fedele' : 'Catalogo';
+    }
   });
 });
+const descInput = document.getElementById('desc');
+if (descInput) descInput.addEventListener('input', () => { opts.description = descInput.value; });
 $('folds').addEventListener('input', (e) => {
   const v = +e.target.value;
   opts.folds = v / 100;
@@ -349,8 +396,9 @@ function renderResults(d) {
   const origURL = bitmapToURL(d.original);
   const before = URL.createObjectURL(currentFile);
 
-  resgrid.innerHTML = card('Sfondo bianco studio', whiteURL, 'consigliato marketplace', 'vintify-bianco.jpg')
-    + card('Sfondo originale sfocato', origURL, 'look naturale', 'vintify-originale.jpg')
+  const aiBadge = d.engine === 'ai' ? 'rifinita con AI' : 'consigliato marketplace';
+  resgrid.innerHTML = card('Sfondo bianco studio', whiteURL, aiBadge, 'vintify-bianco.jpg')
+    + card('Sfondo originale sfocato', origURL, d.engine === 'ai' ? 'rifinita con AI · sfondo originale' : 'look naturale', 'vintify-originale.jpg')
     + `<div class="card ctl" style="grid-column:1/-1">
         <div class="ba" data-pos="50">
           <img src="${before}" alt="Prima">

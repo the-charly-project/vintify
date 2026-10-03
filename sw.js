@@ -7,7 +7,6 @@ const ASSETS = [
   './index.html',
   './pipeline.js',
   './worker.js',
-  './vendor/imgly-loader.mjs',
   './assets/demo_shirt_before.jpg',
   './assets/demo_shirt_after.jpg',
   './assets/demo_sneakers_before.jpg',
